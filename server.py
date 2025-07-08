@@ -16,16 +16,14 @@ def api_data():
 
 @app.route('/api/play', methods=['POST'])
 def play_note():
-    freq = write_serial.write_random_note()
-    if freq is not None:
-        return jsonify({'status': 'success', 'note': freq}), 200
+    TRUE = write_serial.write_true()
+    if TRUE is not None:
+        return jsonify({'status': 'success', 'note': TRUE}), 200
     else:
         return jsonify({'status': 'error', 'message': 'Serial error'}), 500
 
 if __name__ == '__main__':
     read_serial.start_serial_thread()
-
-    # Open a public tunnel to the Flask server on port 80
     public_url = ngrok.connect(addr=5000, domain="amazing-crane-ghastly.ngrok-free.app")
     print(" * ngrok tunnel URL:", public_url)
     app.run(port=5000)
