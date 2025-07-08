@@ -15,12 +15,20 @@ def api_data():
                     'button3': read_serial.button3_presses}), 200
 
 @app.route('/api/play', methods=['POST'])
-def play_note():
+def show_true():
     TRUE = write_serial.write_true()
     if TRUE is not None:
         return jsonify({'status': 'success', 'note': TRUE}), 200
     else:
         return jsonify({'status': 'error', 'message': 'Serial error'}), 500
+@app.route('/api/play', methods=['POST'])
+def show_guess():
+    GUESS = write_serial.write_guess()
+    if GUESS is not None:
+        return jsonify({'status': 'success', 'note': GUESS}), 200
+    else:
+        return jsonify({'status': 'error', 'message': 'Serial error'}), 500
+
 
 if __name__ == '__main__':
     read_serial.start_serial_thread()
