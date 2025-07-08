@@ -5,16 +5,26 @@ import threading
 
 # Shared dictionary to hold latest values
 latest_data = {"tempF": None, "tempC": None, "humidity": None}
+button1_presses = 0
+button2_presses = 0
+button3_presses = 0
 
 def parse_data(line):
     try:
-        parts = line.strip().split(':')
-        tempC = float(parts[0])
-        tempF = float(parts[1])
-        hum = float(parts[2])
-        return tempC, tempF, hum
+        # Check for button presses like "Button: 1"
+        button1_pressed = 0
+        button2_pressed = 0
+        button3_pressed = 0
+        stripped_line = line.strip()
+        if stripped_line == "Button: 1":
+            button1_pressed = 1
+        elif stripped_line == "Button: 2":
+            button2_pressed = 1
+        elif stripped_line == "Button: 3":
+            button3_pressed = 1
+        return button1_pressed, button2_pressed, button3_pressed
     except (IndexError, ValueError):
-        return None, None, None
+        return 0, 0, 0
 
 def read_serial():
     try:
@@ -22,11 +32,11 @@ def read_serial():
         time.sleep(2)  # Wait for Arduino to reset
         while True:
             line = ser.readline().decode('utf-8')
-            tempC, tempF, hum = parse_data(line)
-            if tempC is not None and tempF is not None and hum is not None:
-                latest_data["tempF"] = tempF
-                latest_data["tempC"] = tempC
-                latest_data["humidity"] = hum
+            button1_pressed, button2_pressed, button3_pressed = parse_data(line)
+            global button1_presses, button2_presses, button3_presses
+            button1_presses += button1_pressed
+            button2_presses += button2_pressed
+            button3_presses += button3_pressed
     except serial.SerialException as e:
         print(f"Serial error: {e}")
 
