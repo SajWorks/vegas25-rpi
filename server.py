@@ -4,7 +4,7 @@ from flask_cors import CORS
 import read_serial
 import write_serial
 from pyngrok import ngrok
-from state_manager import StateManager
+from state_manager import StateManager, Guess, GuessResponse
 
 app = Flask(__name__)
 CORS(app)  # Enables CORS for all routes and origins
@@ -20,9 +20,35 @@ def api_data():
 
 @app.route('/api/game_state', methods=['GET'])
 def get_current_state():
-    return jsonify({
-        'state': state_manager.get_state_name()
-    })
+    return jsonify(state_manager.to_json()), 200
+
+@app.route('/api/guess', methods=['POST'])
+def submit_guess():
+    guess = request.args.get('guess')
+    
+    if guess is None:
+        return jsonify({
+            'status': 'error',
+            'message': 'No guess provided in url parameters'
+        }), 400
+    
+    try:
+        # Validate the guess length and characters
+        if not state_manager.add_guess(guess):
+            return jsonify({
+                'status': 'error',
+                'message': 'Invalid guess'
+            }), 400
+            
+        return jsonify({
+            'status': 'success',
+            'guess': guess
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 400
 
 @app.route('/api/set_state', methods=['POST'])
 def set_state():
