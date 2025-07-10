@@ -1,5 +1,6 @@
 from enum import Enum
 from typing import Optional
+import read_serial
 
 # Create an Enum for the state of the game
 class GameState(Enum):
@@ -37,6 +38,10 @@ class StateManager:
     def set_state(self, state_value: int):
         try:
             self.state = GameState(state_value)
+            print(f"Game state: {self.get_state_name()}")
+            if self.state == GameState.PLAY1:
+                # Reset button counts when entering PLAY1 state
+                read_serial.reset_button_counts()
         except ValueError:
             raise ValueError(f"Invalid state value: {state_value}. Must be 1–4.")
 
@@ -50,6 +55,11 @@ class StateManager:
 
     # Add a new guess to the guesses list and validates it first
     def add_guess(self, guess: str) -> bool:
+
+        # Check if the game is in a valid state to accept guesses
+        if self.state not in (GameState.READY, GameState.PLAY2):
+            return False
+
         # Check length
         if len(guess) != 4:
             return False
@@ -74,6 +84,48 @@ class StateManager:
     # Set the secret pattern for the game
     def set_secret_pattern(self, pattern: str) -> None:
         self.secret_pattern = pattern
+
+    # Handle the end of the input for Player 1's response
+    def process_button3_press(self):
+        if self.state == GameState.PLAY1 and self.guesses:
+            # Get the latest guess
+            latest_guess = self.guesses[-1]
+            # Set response based on button press counts
+            latest_guess.set_response(
+                read_serial.button1_presses,
+                read_serial.button2_presses
+            )
+            # Change state to PLAY2 unless the game is over
+            if not self.check_game_end():
+                self.set_state(GameState.PLAY2.value)
+
+    def check_game_end(self) -> bool:
+        """
+        Checks if the game should end. Returns True if game should end, False otherwise.
+        Game ends if:
+        - 10 or more guesses made and last guess wasn't perfect
+        - Any guess gets 4 black pegs (perfect guess)
+        """
+        if not self.guesses:
+            return False
+            
+        latest_guess = self.guesses[-1]
+        if not latest_guess.response:
+            return False
+            
+        # Check for perfect guess (4 black pegs)
+        if latest_guess.response.black == 4:
+            self.set_winner("Player 2")
+            self.set_state(GameState.ENDED.value)
+            return True
+            
+        # Check for max guesses reached (10 or more)
+        if len(self.guesses) >= 10:
+            self.set_winner("Player 1")
+            self.set_state(GameState.ENDED.value)
+            return True
+            
+        return False
     
     # Convert the current state to a JSON-compatible dictionary
     def to_json(self) -> dict:
@@ -92,3 +144,6 @@ class StateManager:
             "winner": self.winner,
             "secret_pattern": self.secret_pattern
         }
+
+# Shared instance of StateManager
+state_manager = StateManager()

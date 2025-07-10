@@ -4,13 +4,13 @@ from flask_cors import CORS
 import read_serial
 import write_serial
 from pyngrok import ngrok
-from state_manager import StateManager, Guess, GuessResponse
+from state_manager import state_manager, Guess, GuessResponse
 
 app = Flask(__name__)
 CORS(app)  # Enables CORS for all routes and origins
 
 # Create a state manager instance
-state_manager = StateManager()
+# state_manager = StateManager()
 
 @app.route('/api/data')
 def api_data():
@@ -39,7 +39,9 @@ def submit_guess():
                 'status': 'error',
                 'message': 'Invalid guess'
             }), 400
-            
+
+        # Write the guess to the serial port
+        write_serial.write_guess(guess)   
         return jsonify({
             'status': 'success',
             'guess': guess
@@ -72,21 +74,6 @@ def set_state():
             'message': str(e)
         }), 400
 
-@app.route('/api/play', methods=['POST'])
-def show_true():
-    TRUE = write_serial.write_true()
-    if TRUE is not None:
-        return jsonify({'status': 'success', 'note': TRUE}), 200
-    else:
-        return jsonify({'status': 'error', 'message': 'Serial error'}), 500
-@app.route('/api/play', methods=['POST'])
-def show_guess():
-    GUESS = write_serial.write_guess()
-    if GUESS is not None:
-        return jsonify({'status': 'success', 'note': GUESS}), 200
-    else:
-        return jsonify({'status': 'error', 'message': 'Serial error'}), 500
-
 def start_server():
     read_serial.start_serial_thread()
     public_url = ngrok.connect(addr=5000, domain="amazing-crane-ghastly.ngrok-free.app")
@@ -94,8 +81,20 @@ def start_server():
     app.run(port=5000)
 
 if __name__ == "__main__":
-    # Print the initial state of the game
-    print(f"Initial game state: {state_manager.get_state_name()}")
 
-    # Start the Flask server with ngrok tunnel
-    start_server()
+    # Try to initialize the game
+    true_pattern = write_serial.initialize_game()
+    if not true_pattern:
+        print("Failed to initialize the game. Exiting.")
+        exit(1)
+    else:
+        # Set the secret pattern in the state manager
+        state_manager.set_secret_pattern(true_pattern)
+
+        # Print the initial state of the game
+        print(f"Initial game state: {state_manager.get_state_name()}")
+
+        # Start the Flask server with ngrok tunnel
+        start_server()
+
+    
